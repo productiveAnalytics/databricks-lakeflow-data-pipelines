@@ -1,0 +1,58 @@
+bundle:
+  name: databricks-lakeflow-scd-demo
+
+include:
+  - resources/schemas.yml
+  - resources/volumes.yml
+  - resources/pipelines.yml
+  - resources/jobs.yml
+
+variables:
+  catalog:
+    description: Existing Unity Catalog catalog used for the demo.
+    default: main
+  volume_name:
+    description: Managed Unity Catalog volume used as the simulated CDC source.
+    default: lakeflow_scd_demo
+
+sync:
+  include:
+    - src/**
+    - dqx/**
+    - tests/**
+    - docs/**
+    - pyproject.toml
+    - README.md
+    - LICENSE
+    - .editorconfig
+    - .gitignore
+
+targets:
+  dev:
+    default: true
+    # NOTE: `mode: development` is deliberately NOT used here.
+    #
+    # It prefixes every resource name with `dev_<short_name>_`, and that prefix
+    # is applied to Unity Catalog schemas — which also moves the managed volume
+    # to /Volumes/<catalog>/dev_<user>_demo__input/...
+    #
+    # The pipeline sources in src/ address their Bronze and Silver schemas by
+    # literal name (`bronze__type_1__sql.customer_cdc`, ...), so under the dev
+    # prefix the pipelines write Bronze/Silver into schemas the bundle never
+    # created while publishing Gold into the prefixed one, and every DQX job
+    # then fails on a table that does not exist. `presets.name_prefix: ""` does
+    # not suppress it — an empty string is treated as unset.
+    #
+    # Dev ergonomics are restored explicitly via `presets` below.
+    #
+    # Trade-off: two people deploying `dev` into the same catalog share the same
+    # schemas and pipeline names. For per-developer isolation, point them at
+    # different catalogs: `databricks bundle deploy -t dev --var catalog=my_sandbox`.
+    presets:
+      pipelines_development: true
+      jobs_max_concurrent_runs: 1
+      trigger_pause_status: PAUSED
+    workspace:
+      host: https://<your-databricks-workspace>
+    variables:
+      catalog: main
