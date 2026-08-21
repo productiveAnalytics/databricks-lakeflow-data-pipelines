@@ -1,0 +1,29 @@
+- name: customer_id_required
+  criticality: error
+  check:
+    function: is_not_null_and_not_empty
+    arguments:
+      column: customer_id
+
+- name: customer_id_unique
+  criticality: error
+  check:
+    function: is_unique
+    arguments:
+      columns: [customer_id]
+
+- name: email_format
+  criticality: error
+  check:
+    function: regex_match
+    arguments:
+      column: email
+      regex: '^[^@\s]+@[^@\s]+\.[^@\s]+$'
+
+- name: customer_name_present
+  criticality: warn
+  check:
+    function: sql_expression
+    arguments:
+      expression: trim(concat(first_name, ' ', last_name)) <> ''
+      msg: customer name should not be blank

@@ -1,0 +1,63 @@
+resources:
+  pipelines:
+    scd1_sql_pipeline:
+      name: lakeflow-scd1-sql-${bundle.target}
+      catalog: ${var.catalog}
+      schema: ${resources.schemas.gold_type1_sql.name}
+      serverless: true
+      continuous: false
+      channel: CURRENT
+      edition: ADVANCED
+      photon: true
+      parameters:
+        source_path: ${resources.volumes.demo_input_volume.volume_path}/customer_cdc
+      libraries:
+        - glob:
+            include: ../src/type1_sql/**
+
+    scd1_python_pipeline:
+      name: lakeflow-scd1-pyspark-${bundle.target}
+      catalog: ${var.catalog}
+      schema: ${resources.schemas.gold_type1_python.name}
+      serverless: true
+      continuous: false
+      channel: CURRENT
+      edition: ADVANCED
+      photon: true
+      configuration:
+        pipeline_catalog: ${var.catalog}
+        source_path: ${resources.volumes.demo_input_volume.volume_path}/customer_cdc
+      libraries:
+        - glob:
+            include: ../src/type1_python/**
+
+    scd2_sql_pipeline:
+      name: lakeflow-scd2-sql-${bundle.target}
+      catalog: ${var.catalog}
+      schema: ${resources.schemas.gold_type2_sql.name}
+      serverless: true
+      continuous: false
+      channel: CURRENT
+      edition: ADVANCED
+      photon: true
+      parameters:
+        source_path: ${resources.volumes.demo_input_volume.volume_path}/customer_cdc
+      libraries:
+        - glob:
+            include: ../src/type2_sql/**
+
+    scd2_python_pipeline:
+      name: lakeflow-scd2-pyspark-${bundle.target}
+      catalog: ${var.catalog}
+      schema: ${resources.schemas.gold_type2_python.name}
+      serverless: true
+      continuous: false
+      channel: CURRENT
+      edition: ADVANCED
+      photon: true
+      configuration:
+        pipeline_catalog: ${var.catalog}
+        source_path: ${resources.volumes.demo_input_volume.volume_path}/customer_cdc
+      libraries:
+        - glob:
+            include: ../src/type2_python/**

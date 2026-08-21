@@ -1,0 +1,29 @@
+- name: customer_id_required
+  criticality: error
+  check:
+    function: is_not_null_and_not_empty
+    arguments:
+      column: customer_id
+
+- name: customer_id_unique
+  criticality: error
+  check:
+    function: is_unique
+    arguments:
+      columns: [customer_id]
+
+- name: email_format
+  criticality: error
+  check:
+    function: regex_match
+    arguments:
+      column: email
+      regex: '^[^@\s]+@[^@\s]+\.[^@\s]+$'
+
+- name: state_two_letters
+  criticality: warn
+  check:
+    function: regex_match
+    arguments:
+      column: state
+      regex: '^[A-Z]{2}$'

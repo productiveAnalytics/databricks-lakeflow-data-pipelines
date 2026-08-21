@@ -1,0 +1,10 @@
+{"customer_id":"C001","first_name":"Alice","last_name":"Nguyen","email":"alice.nguyen@example.com","city":"Chicago","state":"IL","operation":"INSERT","sequence_num":1000}
+{"customer_id":"C002","first_name":"Bob","last_name":"Carter","email":"bob.carter@example.com","city":"Austin","state":"TX","operation":"INSERT","sequence_num":1001}
+{"customer_id":"C003","first_name":"Carol","last_name":"Diaz","email":"carol.diaz@example.com","city":"Denver","state":"CO","operation":"INSERT","sequence_num":1002}
+{"customer_id":"C001","first_name":"Alice","last_name":"Nguyen","email":"alice.nguyen@example.com","city":"Houston","state":"TX","operation":"UPDATE","sequence_num":1005}
+{"customer_id":"C002","first_name":"Bob","last_name":"Carter","email":"bob.carter@example.com","city":"Dallas","state":"TX","operation":"UPDATE","sequence_num":1004}
+{"customer_id":"C001","first_name":"Alice","last_name":"Nguyen","email":"alice.nguyen@example.com","city":"Dallas","state":"TX","operation":"UPDATE","sequence_num":1003}
+{"customer_id":"C003","first_name":"Carol","last_name":"Diaz","email":"carol.diaz@example.com","city":"Boulder","state":"CO","operation":"UPDATE","sequence_num":1006}
+{"customer_id":"C002","first_name":"Bob","last_name":"Carter","email":"bob.carter@example.com","city":null,"state":null,"operation":"DELETE","sequence_num":1010}
+{"customer_id":"C004","first_name":"Dan","last_name":"Lee","email":"dan.lee@example.com","city":"Seattle","state":"WA","operation":"INSERT","sequence_num":1011}
+{"customer_id":"C004","first_name":"Dan","last_name":"Lee","email":"dan.lee@example.com","city":null,"state":null,"operation":"DELETE","sequence_num":1012}

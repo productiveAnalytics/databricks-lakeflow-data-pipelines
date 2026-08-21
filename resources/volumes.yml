@@ -1,0 +1,7 @@
+resources:
+  volumes:
+    demo_input_volume:
+      name: ${var.volume_name}
+      catalog_name: ${var.catalog}
+      schema_name: demo__input
+      volume_type: MANAGED

@@ -1,0 +1,45 @@
+resources:
+  schemas:
+    bronze_type1_sql:
+      name: bronze__type_1__sql
+      catalog_name: ${var.catalog}
+    silver_type1_sql:
+      name: silver__type_1__sql
+      catalog_name: ${var.catalog}
+    gold_type1_sql:
+      name: gold__type_1__sql
+      catalog_name: ${var.catalog}
+
+    bronze_type1_python:
+      name: bronze__type_1__pyspark
+      catalog_name: ${var.catalog}
+    silver_type1_python:
+      name: silver__type_1__pyspark
+      catalog_name: ${var.catalog}
+    gold_type1_python:
+      name: gold__type_1__pyspark
+      catalog_name: ${var.catalog}
+
+    bronze_type2_sql:
+      name: bronze__type_2__sql
+      catalog_name: ${var.catalog}
+    silver_type2_sql:
+      name: silver__type_2__sql
+      catalog_name: ${var.catalog}
+    gold_type2_sql:
+      name: gold__type_2__sql
+      catalog_name: ${var.catalog}
+
+    bronze_type2_python:
+      name: bronze__type_2__pyspark
+      catalog_name: ${var.catalog}
+    silver_type2_python:
+      name: silver__type_2__pyspark
+      catalog_name: ${var.catalog}
+    gold_type2_python:
+      name: gold__type_2__pyspark
+      catalog_name: ${var.catalog}
+
+    demo_input:
+      name: demo__input
+      catalog_name: ${var.catalog}

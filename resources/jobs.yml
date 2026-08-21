@@ -1,0 +1,237 @@
+resources:
+  jobs:
+    bootstrap_sample_data:
+      name: lakeflow-scd-bootstrap-${bundle.target}
+      max_concurrent_runs: 1
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "5"
+      tasks:
+        - task_key: bootstrap
+          environment_key: default
+          spark_python_task:
+            python_file: ../src/common/bootstrap_sample_data.py
+            parameters:
+              - --destination
+              - ${resources.volumes.demo_input_volume.volume_path}/customer_cdc
+
+    scd1_sql_dqx:
+      name: lakeflow-scd1-sql-dqx-${bundle.target}
+      max_concurrent_runs: 1
+      environments:
+        - environment_key: dqx
+          spec:
+            environment_version: "5"
+            dependencies:
+              - databricks-labs-dqx==0.15.0
+              - PyYAML==6.0.2
+      tasks:
+        - task_key: bronze
+          environment_key: dqx
+          spark_python_task:
+            python_file: ../dqx/scripts/run_dqx.py
+            parameters:
+              - --catalog
+              - ${var.catalog}
+              - --implementation
+              - type1_sql
+              - --layer
+              - bronze
+              - --table
+              - ${var.catalog}.${resources.schemas.bronze_type1_sql.name}.customer_cdc
+        - task_key: silver
+          depends_on:
+            - task_key: bronze
+          environment_key: dqx
+          spark_python_task:
+            python_file: ../dqx/scripts/run_dqx.py
+            parameters:
+              - --catalog
+              - ${var.catalog}
+              - --implementation
+              - type1_sql
+              - --layer
+              - silver
+              - --table
+              - ${var.catalog}.${resources.schemas.silver_type1_sql.name}.customer_dim_scd1
+        - task_key: gold
+          depends_on:
+            - task_key: silver
+          environment_key: dqx
+          spark_python_task:
+            python_file: ../dqx/scripts/run_dqx.py
+            parameters:
+              - --catalog
+              - ${var.catalog}
+              - --implementation
+              - type1_sql
+              - --layer
+              - gold
+              - --table
+              - ${var.catalog}.${resources.schemas.gold_type1_sql.name}.customer_current
+
+    scd1_python_dqx:
+      name: lakeflow-scd1-pyspark-dqx-${bundle.target}
+      max_concurrent_runs: 1
+      environments:
+        - environment_key: dqx
+          spec:
+            environment_version: "5"
+            dependencies:
+              - databricks-labs-dqx==0.15.0
+              - PyYAML==6.0.2
+      tasks:
+        - task_key: bronze
+          environment_key: dqx
+          spark_python_task:
+            python_file: ../dqx/scripts/run_dqx.py
+            parameters:
+              - --catalog
+              - ${var.catalog}
+              - --implementation
+              - type1_python
+              - --layer
+              - bronze
+              - --table
+              - ${var.catalog}.${resources.schemas.bronze_type1_python.name}.customer_cdc
+        - task_key: silver
+          depends_on:
+            - task_key: bronze
+          environment_key: dqx
+          spark_python_task:
+            python_file: ../dqx/scripts/run_dqx.py
+            parameters:
+              - --catalog
+              - ${var.catalog}
+              - --implementation
+              - type1_python
+              - --layer
+              - silver
+              - --table
+              - ${var.catalog}.${resources.schemas.silver_type1_python.name}.customer_dim_scd1
+        - task_key: gold
+          depends_on:
+            - task_key: silver
+          environment_key: dqx
+          spark_python_task:
+            python_file: ../dqx/scripts/run_dqx.py
+            parameters:
+              - --catalog
+              - ${var.catalog}
+              - --implementation
+              - type1_python
+              - --layer
+              - gold
+              - --table
+              - ${var.catalog}.${resources.schemas.gold_type1_python.name}.customer_current
+
+    scd2_sql_dqx:
+      name: lakeflow-scd2-sql-dqx-${bundle.target}
+      max_concurrent_runs: 1
+      environments:
+        - environment_key: dqx
+          spec:
+            environment_version: "5"
+            dependencies:
+              - databricks-labs-dqx==0.15.0
+              - PyYAML==6.0.2
+      tasks:
+        - task_key: bronze
+          environment_key: dqx
+          spark_python_task:
+            python_file: ../dqx/scripts/run_dqx.py
+            parameters:
+              - --catalog
+              - ${var.catalog}
+              - --implementation
+              - type2_sql
+              - --layer
+              - bronze
+              - --table
+              - ${var.catalog}.${resources.schemas.bronze_type2_sql.name}.customer_cdc
+        - task_key: silver
+          depends_on:
+            - task_key: bronze
+          environment_key: dqx
+          spark_python_task:
+            python_file: ../dqx/scripts/run_dqx.py
+            parameters:
+              - --catalog
+              - ${var.catalog}
+              - --implementation
+              - type2_sql
+              - --layer
+              - silver
+              - --table
+              - ${var.catalog}.${resources.schemas.silver_type2_sql.name}.customer_dim_scd2
+        - task_key: gold
+          depends_on:
+            - task_key: silver
+          environment_key: dqx
+          spark_python_task:
+            python_file: ../dqx/scripts/run_dqx.py
+            parameters:
+              - --catalog
+              - ${var.catalog}
+              - --implementation
+              - type2_sql
+              - --layer
+              - gold
+              - --table
+              - ${var.catalog}.${resources.schemas.gold_type2_sql.name}.customer_current
+
+    scd2_python_dqx:
+      name: lakeflow-scd2-pyspark-dqx-${bundle.target}
+      max_concurrent_runs: 1
+      environments:
+        - environment_key: dqx
+          spec:
+            environment_version: "5"
+            dependencies:
+              - databricks-labs-dqx==0.15.0
+              - PyYAML==6.0.2
+      tasks:
+        - task_key: bronze
+          environment_key: dqx
+          spark_python_task:
+            python_file: ../dqx/scripts/run_dqx.py
+            parameters:
+              - --catalog
+              - ${var.catalog}
+              - --implementation
+              - type2_python
+              - --layer
+              - bronze
+              - --table
+              - ${var.catalog}.${resources.schemas.bronze_type2_python.name}.customer_cdc
+        - task_key: silver
+          depends_on:
+            - task_key: bronze
+          environment_key: dqx
+          spark_python_task:
+            python_file: ../dqx/scripts/run_dqx.py
+            parameters:
+              - --catalog
+              - ${var.catalog}
+              - --implementation
+              - type2_python
+              - --layer
+              - silver
+              - --table
+              - ${var.catalog}.${resources.schemas.silver_type2_python.name}.customer_dim_scd2
+        - task_key: gold
+          depends_on:
+            - task_key: silver
+          environment_key: dqx
+          spark_python_task:
+            python_file: ../dqx/scripts/run_dqx.py
+            parameters:
+              - --catalog
+              - ${var.catalog}
+              - --implementation
+              - type2_python
+              - --layer
+              - gold
+              - --table
+              - ${var.catalog}.${resources.schemas.gold_type2_python.name}.customer_current

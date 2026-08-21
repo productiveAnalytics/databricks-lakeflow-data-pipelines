@@ -1,0 +1,36 @@
+- name: customer_id_required
+  criticality: error
+  check:
+    function: is_not_null_and_not_empty
+    arguments:
+      column: customer_id
+
+- name: version_start_required
+  criticality: error
+  check:
+    function: is_not_null
+    arguments:
+      column: __START_AT
+
+- name: version_window_valid
+  criticality: error
+  check:
+    function: sql_expression
+    arguments:
+      expression: __END_AT IS NULL OR __END_AT > __START_AT
+      msg: __END_AT must be null for current rows or greater than __START_AT for closed versions
+
+- name: customer_version_unique
+  criticality: error
+  check:
+    function: is_unique
+    arguments:
+      columns: [customer_id, __START_AT]
+
+- name: email_format
+  criticality: error
+  check:
+    function: regex_match
+    arguments:
+      column: email
+      regex: '^[^@\s]+@[^@\s]+\.[^@\s]+$'

@@ -1,0 +1,36 @@
+- name: customer_id_required
+  criticality: error
+  check:
+    function: is_not_null_and_not_empty
+    arguments:
+      column: customer_id
+
+- name: operation_valid
+  criticality: error
+  check:
+    function: sql_expression
+    arguments:
+      expression: operation IN ('INSERT', 'UPDATE', 'DELETE')
+      msg: operation must be INSERT, UPDATE or DELETE
+
+- name: sequence_required
+  criticality: error
+  check:
+    function: is_not_null
+    arguments:
+      column: sequence_num
+
+- name: customer_sequence_unique
+  criticality: error
+  check:
+    function: is_unique
+    arguments:
+      columns: [customer_id, sequence_num]
+
+- name: email_format
+  criticality: warn
+  check:
+    function: regex_match
+    arguments:
+      column: email
+      regex: '^[^@\s]+@[^@\s]+\.[^@\s]+$'
