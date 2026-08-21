@@ -182,7 +182,3 @@ Because Lakeflow checkpoints preserve progress, use a full pipeline reset when y
 ## Why AUTO CDC instead of hand-written MERGE
 
 This repository is deliberately designed around `AUTO CDC`. The source provides a business key, change operation and sequence column. Lakeflow handles out-of-order CDC sequencing, SCD versioning and delete semantics without manually building a `foreachBatch` + `MERGE` state machine.
-
-## License
-
-MIT
