@@ -11,7 +11,9 @@ def main() -> None:
     parser.add_argument("--destination", required=True)
     args = parser.parse_args()
 
-    source_file = Path(__file__).resolve().parents[2] / "src" / "data" / "customer_cdc.jsonl"
+    # Use workspace-synced path instead of __file__ (not available in job context)
+    workspace_root = Path("/Workspace/Users/lalitstar@gmail.com/databricks-lakeflow-data-pipelines")
+    source_file = workspace_root / "src" / "data" / "customer_cdc.jsonl"
     destination = args.destination.rstrip("/")
 
     dbutils.fs.rm(destination, True)
