@@ -9,8 +9,8 @@ include:
 
 variables:
   catalog:
-    description: Existing Unity Catalog catalog used for the demo.
-    default: main
+    description: Unity Catalog catalog for the demo (must be created beforehand using setup/create_catalog.sql).
+    default: lakeflow_scd_demo
   volume_name:
     description: Managed Unity Catalog volume used as the simulated CDC source.
     default: lakeflow_scd_demo
@@ -53,6 +53,6 @@ targets:
       jobs_max_concurrent_runs: 1
       trigger_pause_status: PAUSED
     workspace:
-      host: https://<your-databricks-workspace>
+      host: https://dbc-ab83e746-d98f.cloud.databricks.com
     variables:
-      catalog: main
+      catalog: lakeflow_scd_demo

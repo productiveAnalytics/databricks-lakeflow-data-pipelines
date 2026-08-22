@@ -2,11 +2,48 @@
 name = "databricks-lakeflow-scd-demo"
 version = "0.1.0"
 description = "Lakeflow AUTO CDC SCD Type 1 and Type 2 reference implementation with DQX and Declarative Automation Bundles"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
   "pytest>=8.0,<9",
   "pyyaml>=6.0,<7",
 ]
 
+[project.optional-dependencies]
+# Local development and testing dependencies
+# Note: Spark is provided by Databricks runtime when running on the platform
+#
+# ⚠️ CRITICAL REQUIREMENT:
+#   - Declarative Lakeflow pipelines require Apache Spark 4.1+ for pyspark.pipelines module
+#   - Reference: https://spark.apache.org/docs/latest/declarative-pipelines-programming-guide.html
+#   - Quote: "Apache Spark includes declarative pipelines beginning in Spark 4.1,
+#            available through the pyspark.pipelines module."
+#
+# What CAN be tested locally with PySpark 4.1+:
+#   ✅ src/common/scd_transformations.py (standard PySpark DataFrame APIs)
+#   ✅ Unit tests for transformation functions
+#   ✅ Pipeline wrappers that "from pyspark import pipelines as dp" (Spark 4.1+ has this module)
+#   ✅ @dp.table, @dp.materialized_view, @dp.temporary_view decorators
+#   ❌ dp.create_auto_cdc_flow (Databricks-only extension, not part of Apache Spark)
+#   ❌ cloudFiles / Auto Loader (Databricks service)
+#   ❌ @dp.expect (Databricks-only DQX expectations)
+#
+# Note: Databricks Runtime backports pyspark.pipelines to Spark 3.5.x-based runtimes,
+#       but for local testing you need the actual Apache Spark 4.1+ release.
+local = [
+  "pyspark>=4.1.0,<5.0.0",      # PySpark 4.1+ required for pyspark.pipelines module
+  "delta-spark>=3.2.0,<4.0.0",   # Delta Lake 3.2+ for Spark 4.x compatibility
+  "pytest-spark>=0.6.0",         # PySpark fixtures for pytest
+]
+
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "src/common"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+# Pytest markers for different test categories
+markers = [
+  "unit: Unit tests for pure functions",
+  "integration: Integration tests requiring Spark",
+  "local: Tests that can run locally with PySpark",
+]
