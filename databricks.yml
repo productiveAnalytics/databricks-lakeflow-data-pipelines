@@ -23,7 +23,6 @@ sync:
     - docs/**
     - pyproject.toml
     - README.md
-    - LICENSE
     - .editorconfig
     - .gitignore
 
