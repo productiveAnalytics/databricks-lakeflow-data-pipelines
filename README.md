@@ -32,6 +32,8 @@ This repository intentionally uses the current Lakeflow naming:
 ```text
 .
 ├── databricks.yml
+├── setup/
+│   └── create_catalog.sql                   # 🔧 Unity Catalog creation script
 ├── resources/
 │   ├── schemas.yml
 │   ├── volumes.yml
@@ -39,11 +41,15 @@ This repository intentionally uses the current Lakeflow naming:
 │   └── jobs.yml
 ├── src/
 │   ├── data/customer_cdc.jsonl
-│   ├── common/bootstrap_sample_data.py
+│   ├── common/
+│   │   ├── bootstrap_sample_data.py
+│   │   ├── scd_transformations.py           # ✅ Testable PySpark functions
+│   │   ├── test_scd_transformations.py      # ✅ Unit tests (pytest)
+│   │   └── README_LOCAL_TESTING.md          # Local testing guide
 │   ├── type1_sql/pipeline.sql
-│   ├── type1_python/pipeline.py
+│   ├── type1_python/pipeline.py             # ⚙️ Thin Lakeflow wrapper
 │   ├── type2_sql/pipeline.sql
-│   └── type2_python/pipeline.py
+│   └── type2_python/pipeline.py             # ⚙️ Thin Lakeflow wrapper
 ├── dqx/
 │   ├── checks/<implementation>/<layer>.yml
 │   └── scripts/run_dqx.py
@@ -81,20 +87,42 @@ The four implementations are intentionally isolated so that you can run, compare
 1. A Databricks workspace with Unity Catalog enabled.
 2. Lakeflow pipeline support with `AUTO CDC`; Databricks documents `AUTO CDC` as requiring the Pro or Advanced pipeline edition.
 3. Databricks CLI with Declarative Automation Bundles support.
-4. A catalog where you can create schemas and volumes.
+4. A Unity Catalog where you can create schemas and volumes.
 5. Permissions to create Lakeflow pipelines and the output tables.
 
-The bundle creates the schemas and a managed Unity Catalog volume. Existing schemas with the same names can be used instead by removing the schema resources and retaining the configured catalog.
+### Setup: Create the Unity Catalog
+
+Before deploying the bundle, create the target Unity Catalog and grant necessary permissions:
+
+```bash
+# Option 1: Run the setup script in Databricks SQL Editor or notebook
+# Copy and paste the contents of setup/create_catalog.sql
+
+# Option 2: Run via Databricks CLI
+databricks sql statements execute \
+  --warehouse-id <your-warehouse-id> \
+  --sql-file setup/create_catalog.sql
+```
+
+**Important**: Edit `setup/create_catalog.sql` to replace `lalitstar@gmail.com` with your username or grant permissions to a group.
+
+The script creates:
+- Catalog `lakeflow_scd_demo` (if not exists)
+- Grants: `USE CATALOG`, `CREATE SCHEMA`, `USE SCHEMA`
+
+The bundle then creates the schemas and a managed Unity Catalog volume within this catalog. Existing schemas with the same names can be used instead by removing the schema resources and retaining the configured catalog.
 
 ## Configure the bundle
 
-Edit `databricks.yml` and replace the example catalog value:
+Edit `databricks.yml` and set the catalog name (must match the catalog created in the setup step):
 
 ```yaml
 variables:
   catalog:
-    default: main
+    default: lakeflow_scd_demo  # Or use your existing catalog name
 ```
+
+**Note**: The catalog must already exist with appropriate permissions before deployment. If you used a different catalog name in the setup script, update this value accordingly.
 
 The default target is `dev` and deploys using serverless pipeline compute.
 
@@ -118,8 +146,13 @@ databricks bundle deploy -t dev --var catalog=my_sandbox
 
 ## Deploy
 
+**Prerequisites**: Ensure you've created the Unity Catalog using the setup script (see Prerequisites section above).
+
 ```bash
+# Validate the bundle configuration
 databricks bundle validate -t dev
+
+# Deploy all resources
 databricks bundle deploy -t dev
 ```
 
@@ -182,3 +215,122 @@ Because Lakeflow checkpoints preserve progress, use a full pipeline reset when y
 ## Why AUTO CDC instead of hand-written MERGE
 
 This repository is deliberately designed around `AUTO CDC`. The source provides a business key, change operation and sequence column. Lakeflow handles out-of-order CDC sequencing, SCD versioning and delete semantics without manually building a `foreachBatch` + `MERGE` state machine.
+
+## Architecture: Testable Logic + Lakeflow Orchestration
+
+### ⚠️ Important: AUTO CDC is Lakeflow-Specific
+
+**`AUTO CDC` and related Lakeflow APIs (`dp.create_auto_cdc_flow()`, `CREATE FLOW ... AS AUTO CDC`) are Databricks proprietary features that require the Databricks Lakeflow runtime.** These capabilities are NOT available in:
+
+- Local PySpark environments
+- Standard Apache Spark
+- Non-Databricks platforms (AWS EMR, Azure Synapse, Google Dataproc, etc.)
+
+The AUTO CDC engine provides advanced features that cannot be replicated outside Databricks:
+- Out-of-order CDC event sequencing
+- Automatic SCD Type 1 and Type 2 versioning
+- Idempotent processing with state management
+- Optimized late-arriving data handling
+
+### Refactored for Local Development
+
+Following [Databricks best practices for local development](https://docs.databricks.com/aws/en/ldp/develop-locally), the **Python pipelines** have been refactored to separate testable logic from Lakeflow-specific orchestration:
+
+```
+┌──────────────────────────────────────────────────────────┐
+│  src/common/scd_transformations.py                       │
+│  ✅ Pure PySpark functions (testable locally)            │
+│  • transform_bronze_cdc()                                │
+│  • create_gold_view_scd1()                               │
+│  • create_gold_view_scd2()                               │
+│  • filter_current_records_scd2()                         │
+│  • validate_cdc_operations()                             │
+└──────────────────────────────────────────────────────────┘
+                      ▲
+                      │ imports
+                      │
+┌──────────────────────────────────────────────────────────┐
+│  src/type1_python/pipeline.py                            │
+│  src/type2_python/pipeline.py                            │
+│  ⚙️  Thin Lakeflow wrappers                              │
+│  • @dp.table decorators                                  │
+│  • dp.create_auto_cdc_flow() ⚠️ Lakeflow-only            │
+│  • @dp.materialized_view                                 │
+└──────────────────────────────────────────────────────────┘
+```
+
+### What Can Be Tested Locally?
+
+| Component | Testable Locally? | Location |
+|-----------|-------------------|----------|
+| Bronze transformation (type casting, validation) | ✅ Yes | `scd_transformations.py` |
+| Gold view creation (filtering, projection) | ✅ Yes | `scd_transformations.py` |
+| Data quality checks | ✅ Yes | `scd_transformations.py` |
+| **AUTO CDC logic** | ❌ No - Lakeflow-only | `pipeline.py` (wrapper) |
+| **Auto Loader (cloudFiles)** | ❌ No - Databricks service | `pipeline.py` (wrapper) |
+| **Streaming decorators** | ❌ No - Lakeflow runtime | `pipeline.py` (wrapper) |
+
+### Local Testing Guide
+
+The Python pipelines include:
+
+1. **[scd_transformations.py](src/common/scd_transformations.py)** - Testable PySpark functions
+2. **[test_scd_transformations.py](src/common/test_scd_transformations.py)** - Unit tests (pytest)
+3. **[README_LOCAL_TESTING.md](src/common/README_LOCAL_TESTING.md)** - Complete testing guide
+
+#### Quick Local Setup & Test
+
+```bash
+# Install dependencies with uv (recommended)
+curl -LsSf https://astral.sh/uv/install.sh | sh  # Install uv if needed
+uv pip install -e ".[local]"  # Install with PySpark 4.1+, Delta Spark, pytest-spark
+
+# Run tests
+pytest src/common/test_scd_transformations.py -v
+
+# Or using pip
+pip install -e ".[local]"
+pytest src/common/test_scd_transformations.py -v
+```
+
+**⚠️ Important:** Declarative Lakeflow pipelines require **Apache Spark 4.1+** for the `pyspark.pipelines` module. This allows you to test pipeline wrapper files locally. However, Databricks-specific extensions (`dp.create_auto_cdc_flow`, `cloudFiles`, DQX expectations) remain Databricks-only. See [README_LOCAL_TESTING.md](src/common/README_LOCAL_TESTING.md) for details.
+
+```python
+# Inside Databricks notebook
+import sys
+sys.path.append("/Workspace/Users/<your-email>/databricks-lakeflow-data-pipelines/src/common")
+from scd_transformations import transform_bronze_cdc
+
+# Test with sample data
+result = transform_bronze_cdc(test_df)
+result.show()
+```
+
+### Benefits of This Architecture
+
+✅ **Fast Iteration** - Test transformations locally without deploying (seconds vs minutes)  
+✅ **Lower Cost** - No pipeline compute charges during development  
+✅ **CI/CD Ready** - Tests run in GitHub Actions / Jenkins without Databricks  
+✅ **Better Design** - Clear separation between business logic and orchestration  
+✅ **Portable** - Transformation logic can work outside Databricks (with manual CDC implementation)  
+
+### Platform Compatibility Summary
+
+| Feature | Databricks Lakeflow | Local PySpark | Other Spark Platforms |
+|---------|---------------------|---------------|----------------------|
+| Transformation functions | ✅ | ✅ | ✅ |
+| Unit tests | ✅ | ✅ | ✅ |
+| AUTO CDC | ✅ | ❌ | ❌ |
+| Auto Loader | ✅ | ❌ | ❌ |
+| SCD Type 1/2 (manual) | ✅ | ✅ (simulation) | ✅ (custom ETL) |
+
+**For non-Databricks deployments:** Use the testable transformation functions as a foundation and implement manual CDC/SCD logic using standard Spark operations (window functions, MERGE statements, Delta Lake operations, or equivalent).
+
+### SQL Pipelines
+
+The SQL pipelines (`src/type1_sql/pipeline.sql`, `src/type2_sql/pipeline.sql`) are **not refactored** because:
+- SQL is inherently declarative and does not have the same local testing workflow as Python
+- The entire SQL pipeline uses Lakeflow-specific syntax (`CREATE FLOW`, `AS AUTO CDC`)
+- SQL transformations can be tested via `executeCode` in Databricks notebooks
+
+For SQL pipeline development, use Databricks notebooks with serverless compute for rapid iteration.

@@ -1,6 +1,24 @@
+"""
+SCD Type 1 Lakeflow Pipeline - Thin Wrapper Pattern
+
+This pipeline file contains ONLY Lakeflow-specific decorators and orchestration.
+All business logic lives in src/common/scd_transformations.py for testability.
+
+Architecture:
+- Bronze: Ingest CDC events from UC Volume
+- Silver: Apply SCD Type 1 using AUTO CDC (Lakeflow-managed)
+- Gold: Current state view (testable transformation)
+"""
+
 from pyspark import pipelines as dp
 from pyspark.sql import functions as F
 
+# Import testable transformation functions
+import sys
+sys.path.append("/Workspace/Users/lalitstar@gmail.com/databricks-lakeflow-data-pipelines/src/common")
+from scd_transformations import transform_bronze_cdc, create_gold_view_scd1
+
+# Pipeline configuration
 CATALOG = spark.conf.get("pipeline_catalog")
 SOURCE_PATH = spark.conf.get("source_path")
 
@@ -9,29 +27,43 @@ SILVER = f"{CATALOG}.silver__type_1__pyspark.customer_dim_scd1"
 GOLD = f"{CATALOG}.gold__type_1__pyspark.customer_current"
 
 
+# ============================================================================
+# Bronze Layer: CDC Ingestion
+# ============================================================================
+
 @dp.table(
     name=BRONZE,
     comment="Raw customer CDC events from the simulated source feed.",
 )
 def customer_cdc():
-    return (
+    """Bronze table: Ingest and transform CDC events.
+    
+    Lakeflow-specific: Uses cloudFiles (Auto Loader) for streaming ingestion.
+    Testable logic: transform_bronze_cdc() can be unit tested locally.
+    """
+    # Lakeflow-specific: streaming read with Auto Loader
+    df_raw = (
         spark.readStream
         .format("cloudFiles")
         .option("cloudFiles.format", "json")
         .option("cloudFiles.inferColumnTypes", "true")
         .load(SOURCE_PATH)
-        .select(
-            F.col("customer_id").cast("string").alias("customer_id"),
-            F.col("first_name").cast("string").alias("first_name"),
-            F.col("last_name").cast("string").alias("last_name"),
-            F.col("email").cast("string").alias("email"),
-            F.col("city").cast("string").alias("city"),
-            F.col("state").cast("string").alias("state"),
-            F.col("operation").cast("string").alias("operation"),
-            F.col("sequence_num").cast("long").alias("sequence_num"),
-        )
     )
+    
+    # Testable transformation: type casting and column selection
+    return transform_bronze_cdc(df_raw)
 
+
+# ============================================================================
+# Silver Layer: SCD Type 1 (Lakeflow AUTO CDC)
+# ============================================================================
+
+# Note: create_auto_cdc_flow is Lakeflow-specific and cannot be tested locally.
+# The AUTO CDC logic handles:
+# - Out-of-order event sequencing
+# - Upserts (INSERT/UPDATE)
+# - Deletes
+# - Idempotent processing
 
 dp.create_streaming_table(
     name=SILVER,
@@ -49,13 +81,20 @@ dp.create_auto_cdc_flow(
 )
 
 
+# ============================================================================
+# Gold Layer: Current State View
+# ============================================================================
+
 @dp.materialized_view(
     name=GOLD,
     comment="Current customer state exposed as a Gold consumer dataset.",
 )
 def customer_current():
-    df = spark.read.table(SILVER)
-
-    return df.select(
-        "customer_id", "first_name", "last_name", "email", "city", "state"
-    )
+    """Gold view: Consumer-facing current state.
+    
+    Testable logic: create_gold_view_scd1() can be unit tested with batch DataFrames.
+    """
+    df_silver = spark.read.table(SILVER)
+    
+    # Testable transformation: select business columns
+    return create_gold_view_scd1(df_silver)
